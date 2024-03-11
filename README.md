@@ -9,3 +9,6 @@ Convert PPT to PDF with blank side note areas, customizable page margins and the
 # 注意事项(Precautions)
 - Python 脚本**理论上**可用于所有系统，仅测试过 Windows
 - 系统**必须已经安装 Office**，仅测试过 MS-Office
+# 示例(example)
+![Before](https://img2.imgtp.com/2024/03/12/Oyth1fHq.png)
+![After](https://img2.imgtp.com/2024/03/12/2gIoPKwt.png)
