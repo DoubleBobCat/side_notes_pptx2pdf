@@ -1,0 +1,4 @@
+opencv-python  
+python-pptx  
+python-docx  
+pywin32
