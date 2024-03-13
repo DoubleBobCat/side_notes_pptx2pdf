@@ -1,7 +1,7 @@
 @echo off
 cls
 setlocal enabledelayedexpansion
-set PYTHON_VERSION=3.11.4
+set PYTHON_VERSION=3.7.9
 set PYTHON_ARCH=amd64
 set PYTHON_EXE=python-%PYTHON_VERSION%-%PYTHON_ARCH%.exe
 set PYTHON_URL=https://www.python.org/ftp/python/%PYTHON_VERSION%/%PYTHON_EXE%

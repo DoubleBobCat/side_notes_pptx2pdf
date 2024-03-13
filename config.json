@@ -1,9 +1,18 @@
 {
-    "pages_in_page": 4,
+    "double_page_printing": true,
+    "line_num": 32,
+    "line_color": [
+        0,
+        0,
+        0
+    ],
+    "line_thickness": 2,
+    "pages_in_page": 5,
     "margin": [
         1.5,
         1.5,
         1.3,
         1.3
-    ]
+    ],
+    "add_page_num": false
 }

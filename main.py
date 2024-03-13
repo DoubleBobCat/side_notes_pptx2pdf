@@ -3,10 +3,16 @@ import shutil
 import sys
 import cv2
 import json
+import numpy as np
 from pptx_tools import utils
 from docx import Document
 from docx.shared import Cm
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 from win32com import client
+
+dev_mod = False
 
 
 def convert_pptx2png(folder_path, file_name):
@@ -75,7 +81,68 @@ def splice_png(folder_path, pages_in_page):
     return output_img_fils
 
 
+def draw_note(output_img_fils, line_num, margin, line_color, line_thickness_):
+    # draw a white pic
+    page_width = Cm(21) - Cm(margin[2]) - Cm(margin[3])
+    page_height = Cm(29.7) - Cm(margin[0]) - Cm(margin[1])
+    temple_img = cv2.imread(output_img_fils[0])
+    img_height, img_width, _ = temple_img.shape
+    multiple = page_width / page_height
+    max_width = img_height * multiple
+    note_width = max_width - img_width
+    white_image = np.full(
+        (int(img_height), int(note_width), 3), 255, dtype=np.uint8)
+    note_img = white_image
+    # draw line
+    if line_num != 0:
+        interval = img_height // line_num
+        line_color_ = (line_color[0], line_color[1], line_color[2])
+        line_thickness_ = line_thickness
+        for i in range(0, int(img_height), int(interval)):
+            cv2.line(note_img, (0, i), (int(note_width) - 1, i),
+                     line_color_, line_thickness_)
+    # splice img and note
+    page = 1
+    for images_path in output_img_fils:
+        image = cv2.imread(images_path)
+        # fill height
+        padding_height = note_img.shape[0] - image.shape[0]
+        if padding_height != 0:
+            padding = np.full(
+                (padding_height, image.shape[1], 3), 255, dtype=np.uint8)
+            padded_image = np.vstack((image, padding))
+            image = padded_image
+        # concat
+        if double_page_printing:
+            if page % 2 == 1:
+                image_temp = cv2.hconcat([image, note_img])
+            else:
+                image_temp = cv2.hconcat([note_img, image])
+            page += 1
+        else:
+            image_temp = cv2.hconcat([image, note_img])
+        cv2.imwrite(images_path, image_temp)
+    print('-> done.')
+
+
 def add_png2docx(folder_path, file_name, output_img_fils, margin):
+    def create_element(name):
+        return OxmlElement(name)
+
+    def create_attribute(element, name, value):
+        element.set(qn(name), value)
+
+    def add_page_number(run):
+        fldChar1 = create_element('w:fldChar')
+        create_attribute(fldChar1, 'w:fldCharType', 'begin')
+        instrText = create_element('w:instrText')
+        create_attribute(instrText, 'xml:space', 'preserve')
+        instrText.text = "PAGE"
+        fldChar2 = create_element('w:fldChar')
+        create_attribute(fldChar2, 'w:fldCharType', 'end')
+        run._r.append(fldChar1)
+        run._r.append(instrText)
+        run._r.append(fldChar2)
     picture_weight = Cm(0)
     doc = Document()
     sec = doc.sections[0]
@@ -93,6 +160,9 @@ def add_png2docx(folder_path, file_name, output_img_fils, margin):
             scaling = picture.height.cm / picture.width.cm
             picture.width = Cm(picture_weight)
             picture.height = Cm(picture_weight * scaling)
+    if add_page_num:
+        add_page_number(doc.sections[0].footer.paragraphs[0].add_run())
+        doc.sections[0].footer.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
     output_docx = os.path.join(
         folder_path, 'temp_folder\\' + file_name.replace('pptx', 'docx'))
     doc.save(output_docx)
@@ -112,7 +182,6 @@ def convert_docx2pdf(folder_path):
 
 
 if __name__ == "__main__":
-    os.system('cls')
     print('----- Programme Begin -----')
 
     # init var
@@ -121,9 +190,15 @@ if __name__ == "__main__":
     pages_in_page = 4
     margin = []
     output_img_fils = []
+    double_page_printing = False
+    line_num = 32
+    add_page_num = False
 
     # input file
-    str = input("Please input file path: ")
+    if dev_mod:
+        str = '"D:\School\PPT\古风.pptx"'
+    else:
+        str = input("Please input file path: ")
     str = str.replace('\"', '')
     str = str.replace('\\', '\\\\')
     folder_path, file_name = os.path.split(str)
@@ -138,8 +213,13 @@ if __name__ == "__main__":
     os.mkdir(os.path.join(folder_path, 'temp_folder'))
     with open('config.json', 'r') as file:
         config_data = json.load(file)
+    double_page_printing = config_data['double_page_printing']
+    line_num = config_data['line_num']
+    line_color = config_data['line_color']
+    line_thickness = config_data['line_thickness']
     pages_in_page = config_data['pages_in_page']
     margin = config_data['margin']
+    add_page_num = config_data['add_page_num']
     print('-> done.')
 
     # convert pptx to png
@@ -151,6 +231,11 @@ if __name__ == "__main__":
     print('-> splicing PNG', end='... ')
     sys.stdout.flush()
     output_img_fils = splice_png(folder_path, pages_in_page)
+
+    # draw note
+    print('-> draw note', end='... ')
+    sys.stdout.flush()
+    draw_note(output_img_fils, line_num, margin, line_color, line_thickness)
 
     # add png to docx
     print('-> add PNG to DOCX', end='... ')
